@@ -1,0 +1,13 @@
+[package]
+name = "struct_extractors"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+num-traits = "0.2.19"
+syn = { version = "3", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
