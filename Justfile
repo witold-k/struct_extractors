@@ -14,7 +14,7 @@ fix:
     @RUST_BACKTRACE=1 aifix -l rust -t fix_code -f {{current_dir}} -f {{current_dir}}/..
 
 review:
-    @RUST_BACKTRACE=1 aifix -l rust -t review_code -s src/lib.rs -f {{current_dir}} -f {{current_dir}}/..
+    @RUST_BACKTRACE=1 aifix -l rust -d -t review_code -s src/lib.rs -f {{current_dir}} -f {{current_dir}}/..
 
 fixd:
     @RUST_BACKTRACE=1 aifix -d -l rust -t fix_code -f {{current_dir}} -f {{current_dir}}/..
