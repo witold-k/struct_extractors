@@ -14,17 +14,18 @@ pub fn access(_args: TokenStream, input: TokenStream) -> TokenStream {
 pub fn extract_accessors(_args: TokenStream, input: TokenStream) -> TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
     let struct_ident = &ast.ident;
-
     let mut methods = quote! {};
 
     if let syn::Data::Struct(ref mut data) = ast.data {
         for field in &mut data.fields {
             let mut accessor = None;
 
-            // Extract #[access(...)]
             field.attrs.retain(|attr| {
                 if attr.path().is_ident("access") {
-                    accessor = Some(attr.parse_args::<syn::Meta>().unwrap());
+                    accessor = Some(
+                        attr.parse_args::<syn::Meta>()
+                            .expect("invalid #[access(...)] syntax"),
+                    );
                     false
                 } else {
                     true
@@ -32,86 +33,80 @@ pub fn extract_accessors(_args: TokenStream, input: TokenStream) -> TokenStream 
             });
 
             if let Some(meta) = accessor {
-                let field_ident = field.ident.as_ref().unwrap();
+                let field_ident = field.ident.as_ref().expect("named fields only");
                 let ty = &field.ty;
 
                 match meta {
                     syn::Meta::Path(path) => {
-                        let ident = path.get_ident().unwrap().to_string();
+                        let ident = path
+                            .get_ident()
+                            .expect("expected accessor identifier")
+                            .to_string();
 
-                    match ident.as_str() {
-                        "get" => {
-                            let method_name = syn::Ident::new(
-                                &format!("get_{}", field_ident),
-                                field_ident.span(),
-                            );
-                            methods.extend(quote! {
-                                pub fn #method_name(&self) -> #ty {
-                                    self.#field_ident
-                                }
-                            });
-                        }
-
-                        "get_ref" => {
-                            let method_name = syn::Ident::new(
-                                &format!("get_ref_{}", field_ident),
-                                field_ident.span(),
-                            );
-                            methods.extend(quote! {
-                                pub fn #method_name(&self) -> &#ty {
-                                    &self.#field_ident
-                                }
-                            });
-                        }
-
-                        "get_mut" => {
-                            let method_name = syn::Ident::new(
-                                &format!("get_mut_{}", field_ident),
-                                field_ident.span(),
-                            );
-                            methods.extend(quote! {
-                                pub fn #method_name(&mut self) -> &mut #ty {
-                                    &mut self.#field_ident
-                                }
-                            });
-                        }
-
-                        other => panic!("Unknown accessor: {}", other),
-                    }
-                                        }
-
-                    syn::Meta::NameValue(nv) => {
-                        if nv.path.is_ident("get") {
-                            if let syn::Expr::Lit(expr_lit) = nv.value
-                                && let syn::Lit::Str(litstr) = expr_lit.lit {
-                                    let method_name = syn::Ident::new(&litstr.value(), litstr.span());
-                                    methods.extend(quote! {
-                                        pub fn #method_name(&self) -> #ty {
-                                            self.#field_ident
-                                        }
-                                    });
+                        match ident.as_str() {
+                            "get" => {
+                                let method_name =
+                                    syn::Ident::new(&format!("get_{}", field_ident), field_ident.span());
+                                methods.extend(quote! {
+                                    pub fn #method_name(&self) -> #ty {
+                                        self.#field_ident
+                                    }
+                                });
                             }
-                        } else {
-                            panic!("Unknown accessor form");
+                            "get_ref" => {
+                                let method_name = syn::Ident::new(
+                                    &format!("get_ref_{}", field_ident),
+                                    field_ident.span(),
+                                );
+                                methods.extend(quote! {
+                                    pub fn #method_name(&self) -> &#ty {
+                                        &self.#field_ident
+                                    }
+                                });
+                            }
+                            "get_mut" => {
+                                let method_name = syn::Ident::new(
+                                    &format!("get_mut_{}", field_ident),
+                                    field_ident.span(),
+                                );
+                                methods.extend(quote! {
+                                    pub fn #method_name(&mut self) -> &mut #ty {
+                                        &mut self.#field_ident
+                                    }
+                                });
+                            }
+                            other => panic!("unknown accessor: {other}"),
                         }
                     }
-
-                    _ => panic!("Invalid #[access(...)] syntax"),
+                    syn::Meta::NameValue(nv) if nv.path.is_ident("get") => {
+                        let syn::Expr::Lit(expr_lit) = nv.value else {
+                            panic!("expected string literal in #[access(get = \"...\")]");
+                        };
+                        let syn::Lit::Str(litstr) = expr_lit.lit else {
+                            panic!("expected string literal in #[access(get = \"...\")]");
+                        };
+                        let method_name = syn::Ident::new(&litstr.value(), litstr.span());
+                        methods.extend(quote! {
+                            pub fn #method_name(&self) -> #ty {
+                                self.#field_ident
+                            }
+                        });
+                    }
+                    syn::Meta::NameValue(_) => panic!("unknown accessor form"),
+                    _ => panic!("invalid #[access(...)] syntax"),
                 }
             }
         }
     }
 
-    // Handle generics properly
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-    let expanded = quote! {
+    quote! {
         #ast
 
         impl #impl_generics #struct_ident #ty_generics #where_clause {
             #methods
         }
-    };
-
-    expanded.into()
+    }
+    .into()
 }
