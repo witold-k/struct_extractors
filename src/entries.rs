@@ -5,8 +5,7 @@ use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, ItemEnum, Path, punctuated::Punctuated, Token};
 
-#[proc_macro_attribute]
-pub fn base_entries(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub(crate) fn base_entries_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemEnum);
     let enum_ident = &input.ident;
     let module_ident = format_ident!("__BASE_ENTRIES_{}", enum_ident);
@@ -23,8 +22,7 @@ pub fn base_entries(_attr: TokenStream, item: TokenStream) -> TokenStream {
     .into()
 }
 
-#[proc_macro_attribute]
-pub fn same_entries(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub(crate) fn same_entries_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
     let bases = parse_macro_input!(attr with Punctuated::<Path, Token![,]>::parse_terminated);
     let input = parse_macro_input!(item as ItemEnum);
     let enum_ident = &input.ident;
