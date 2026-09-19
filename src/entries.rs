@@ -20,6 +20,8 @@ pub(crate) fn base_entries_impl(_attr: TokenStream, item: TokenStream) -> TokenS
         #[doc(hidden)]
         pub mod #module_ident {
             #(pub struct #variants;)*
+
+            pub trait ContainsAll<Other> {}
         }
     }
     .into()
