@@ -14,7 +14,7 @@ pub(crate) fn extract_hashers_impl(_args: TokenStream, input: TokenStream) -> To
     let struct_ident = &ast.ident;
     let generics = ast.generics.clone();
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let params = generics.params.iter();
+    let params: Vec<_> = generics.params.iter().collect();
     let type_args = generics.params.iter().map(|param| match param {
         GenericParam::Type(param) => {
             let ident = &param.ident;
@@ -51,7 +51,7 @@ pub(crate) fn extract_hashers_impl(_args: TokenStream, input: TokenStream) -> To
                 let field_ident = field.ident.as_ref().expect("named fields only");
                 let wrapper_ident = format_ident!("{}HashBy{}", struct_ident, field_ident);
                 let method_ident = format_ident!("hash_by_{}", field_ident);
-                let wrapper_params = params.clone();
+                let wrapper_params = &params;
                 let wrapper_args = &type_args;
 
                 wrappers.extend(quote! {
@@ -60,7 +60,7 @@ pub(crate) fn extract_hashers_impl(_args: TokenStream, input: TokenStream) -> To
                         pub &'__hash #struct_ident #ty_generics
                     ) #where_clause;
 
-                    impl<'__hash, #impl_generics> core::cmp::PartialEq
+                    impl<'__hash, #(#wrapper_params),*> core::cmp::PartialEq
                         for #wrapper_ident<'__hash, #(#wrapper_args),*>
                     #where_clause
                     {
@@ -70,12 +70,12 @@ pub(crate) fn extract_hashers_impl(_args: TokenStream, input: TokenStream) -> To
                         }
                     }
 
-                    impl<'__hash, #impl_generics> core::cmp::Eq
+                    impl<'__hash, #(#wrapper_params),*> core::cmp::Eq
                         for #wrapper_ident<'__hash, #(#wrapper_args),*>
                     #where_clause
                     {}
 
-                    impl<'__hash, #impl_generics> core::hash::Hash
+                    impl<'__hash, #(#wrapper_params),*> core::hash::Hash
                         for #wrapper_ident<'__hash, #(#wrapper_args),*>
                     #where_clause
                     {
