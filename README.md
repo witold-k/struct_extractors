@@ -9,7 +9,7 @@ The crate is intentionally split by concept so that each macro family has one re
 - `accessors`: generate value, shared-reference, or mutable-reference accessors from `#[access(...)]` field markers.
 - `comparators`: generate named comparator functions for selected fields.
 - `hashers`: generate lightweight hash/equality wrapper types for selected fields.
-- `number`: derive arithmetic, assignment, comparison, aggregation, and `num_traits::Zero` / `One` behavior from one numeric field.
+- `number`: derive arithmetic, assignment, comparison, aggregation, and `num_traits::Zero` / `One` behavior from one selected field. Binary and unary operations preserve the other fields from the left-hand value; `Sum`, `Product`, `Zero`, and `One` initialize other fields through `Default`.
 - `entries`: perform compile-time subset checks that every variant of an annotated enum exists in one or more declared base enums.
 
 ## Example
