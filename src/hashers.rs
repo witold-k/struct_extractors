@@ -5,13 +5,11 @@ use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, Data, DeriveInput};
 
-#[proc_macro_attribute]
-pub fn extract_hash(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub(crate) fn extract_hash_impl(_args: TokenStream, input: TokenStream) -> TokenStream {
     input
 }
 
-#[proc_macro_attribute]
-pub fn extract_hashers(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub(crate) fn extract_hashers_impl(_args: TokenStream, input: TokenStream) -> TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
     let struct_ident = &ast.ident;
     let mut generated = quote! {};
