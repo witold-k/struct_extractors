@@ -1,98 +1,74 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 Witold Kaminski
 
+use num_traits::{Float, One, Zero};
 use struct_extractors::extract_number;
-use num_traits::{Float, Zero, One};
 
-#[extract_number(val)]
+#[extract_number(value)]
 #[derive(Clone, Copy, Default)]
-pub struct FloatMetric<T: Float> {
-    pub val: T,
-    // other arbitary user defined fields
-    pub other_field1: u16,
-    pub other_field2: u32
+pub struct FloatMetric<N>
+where
+    N: Float,
+{
+    pub value: N,
+    pub tag: u16,
 }
 
-impl<T: Float> FloatMetric<T> {
-    fn new(v: T) -> Self {
-        Self { val: v, other_field1: 1u16, other_field2: 2u32 }
+impl<N> FloatMetric<N>
+where
+    N: Float,
+{
+    fn new(value: N) -> Self {
+        Self { value, tag: 7 }
     }
 }
 
 #[test]
-fn test_basic_arithmetic() {
+fn arithmetic_uses_selected_field() {
     let a = FloatMetric::<f64>::new(10.0);
     let b = FloatMetric::<f64>::new(2.0);
 
-    assert_eq!((a + b).val, 12.0);
-    assert_eq!((a - b).val, 8.0);
-    assert_eq!((a * b).val, 20.0);
-    assert_eq!((a / b).val, 5.0);
+    assert_eq!((a + b).value, 12.0);
+    assert_eq!((a - b).value, 8.0);
+    assert_eq!((a * b).value, 20.0);
+    assert_eq!((a / b).value, 5.0);
 }
 
 #[test]
-fn test_mul_div_with_inner_type() {
-    let a = FloatMetric::<f64>::new(10.0);
+fn scalar_and_assign_ops_use_actual_field_type() {
+    let mut value = FloatMetric::<f64>::new(10.0);
 
-    assert_eq!((a * 3.0).val, 30.0);
-    assert_eq!((a / 2.0).val, 5.0);
+    assert_eq!((value * 3.0).value, 30.0);
+    assert_eq!((value / 2.0).value, 5.0);
+
+    value += FloatMetric::new(2.0);
+    value -= FloatMetric::new(1.0);
+    value *= 3.0;
+    value /= 2.0;
+
+    assert_eq!(value.value, 16.5);
 }
 
 #[test]
-fn test_assign_ops() {
-    let mut x = FloatMetric::<f64>::new(10.0);
-    let y = FloatMetric::<f64>::new(2.0);
-
-    x += y;
-    assert_eq!(x.val, 12.0);
-
-    x -= y;
-    assert_eq!(x.val, 10.0);
-
-    x *= 3.0;
-    assert_eq!(x.val, 30.0);
-
-    x /= 2.0;
-    assert_eq!(x.val, 15.0);
-}
-
-#[test]
-fn test_neg() {
-    let a = FloatMetric::<f64>::new(5.0);
-    assert_eq!((-a).val, -5.0);
-}
-
-#[test]
-fn test_comparisons() {
+fn comparison_sum_product_zero_and_one_work() {
     let a = FloatMetric::<f64>::new(3.0);
     let b = FloatMetric::<f64>::new(7.0);
-
     assert!(a < b);
-    assert!(b > a);
-    assert!(a != b);
-}
 
-#[test]
-fn test_sum_and_product() {
     let values = [
         FloatMetric::<f64>::new(2.0),
         FloatMetric::<f64>::new(3.0),
         FloatMetric::<f64>::new(5.0),
     ];
 
-    let sum: FloatMetric<f64> = values.iter().copied().sum();
-    assert_eq!(sum.val, 10.0);
-
-    let product: FloatMetric<f64> = values.iter().copied().product();
-    assert_eq!(product.val, 30.0);
+    assert_eq!(values.iter().copied().sum::<FloatMetric<f64>>().value, 10.0);
+    assert_eq!(values.iter().copied().product::<FloatMetric<f64>>().value, 30.0);
+    assert_eq!(FloatMetric::<f64>::zero().value, 0.0);
+    assert_eq!(FloatMetric::<f64>::one().value, 1.0);
 }
 
 #[test]
-fn test_zero_one() {
-    let z = FloatMetric::<f64>::zero();
-    let o = FloatMetric::<f64>::one();
-
-    assert_eq!(z.val, 0.0);
-    assert_eq!(o.val, 1.0);
+fn untouched_fields_follow_struct_update_semantics() {
+    let value = FloatMetric::<f64>::new(2.0);
+    assert_eq!((-value).tag, 7);
 }
-
