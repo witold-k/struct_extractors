@@ -10,7 +10,7 @@ The crate is intentionally split by concept so that each macro family has one re
 - `comparators`: generate named comparator functions for selected fields.
 - `hashers`: generate lightweight hash/equality wrapper types for selected fields.
 - `number`: derive arithmetic, assignment, comparison, aggregation, and `num_traits::Zero` / `One` behavior from one numeric field.
-- `entries`: perform compile-time checks that enum variants exist in one or more declared base enums.
+- `entries`: perform compile-time subset checks that every variant of an annotated enum exists in one or more declared base enums.
 
 ## Example
 
@@ -39,6 +39,7 @@ assert_eq!(config.get_ref_name(), "worker");
 
 - Keep each procedural-macro concept in its own source module.
 - Generate small, explicit APIs instead of introducing a runtime abstraction layer.
+- Treat value getters as `Copy` accessors; use reference or mutable-reference accessors for non-`Copy` fields.
 - Preserve the annotated item and remove only helper attributes consumed by the corresponding struct-level macro.
 - Keep generated behavior predictable from the field annotations.
 - Prefer compile-time validation where the macro naturally supports it.
@@ -56,7 +57,7 @@ src/
 └── number.rs
 ```
 
-`lib.rs` only declares the concept modules and re-exports their procedural macros.
+`lib.rs` contains the required crate-root `#[proc_macro_attribute]` entrypoints as thin wrappers; the implementations live in the concept modules.
 
 ## Testing
 
