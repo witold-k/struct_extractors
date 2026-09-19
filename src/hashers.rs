@@ -10,38 +10,28 @@ pub fn extract_hash(_args: TokenStream, input: TokenStream) -> TokenStream {
     input
 }
 
-/* -------------------------------------------------------------------------
-   STRUCT-LEVEL MACRO
-   ------------------------------------------------------------------------- */
-
 #[proc_macro_attribute]
 pub fn extract_hashers(_args: TokenStream, input: TokenStream) -> TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
     let struct_ident = &ast.ident;
-
     let mut generated = quote! {};
 
     if let Data::Struct(ref mut data) = ast.data {
         for field in &mut data.fields {
-            let mut is_extract_hash = false;
+            let mut marked = false;
 
-            // Suche nach #[extract_hash] ohne Argumente
             field.attrs.retain(|attr| {
                 if attr.path().is_ident("extract_hash") {
-                    is_extract_hash = true;
-                    false // Entferne das Attribut vom Feld
+                    marked = true;
+                    false
                 } else {
                     true
                 }
             });
 
-            if is_extract_hash {
-                let field_ident = field.ident.as_ref().expect("Named fields only");
-
-                // Generiert Namen wie: UserHashById
+            if marked {
+                let field_ident = field.ident.as_ref().expect("named fields only");
                 let wrapper_ident = format_ident!("{}HashBy{}", struct_ident, field_ident);
-                // Name der Methode am Struct: id_hasher (oder einfach das Feld-Ident)
-                let method_ident = format_ident!("hash");
 
                 generated.extend(quote! {
                     #[derive(Clone, Copy, Debug)]
@@ -65,7 +55,7 @@ pub fn extract_hashers(_args: TokenStream, input: TokenStream) -> TokenStream {
 
                     impl #struct_ident {
                         #[inline(always)]
-                        pub fn #method_ident(&self) -> #wrapper_ident {
+                        pub fn hash(&self) -> #wrapper_ident {
                             #wrapper_ident(self)
                         }
                     }
