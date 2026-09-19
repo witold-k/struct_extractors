@@ -1,129 +1,59 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 Witold Kaminski
 
-use proc_macro::{Ident, TokenStream, TokenTree};
+use proc_macro::TokenStream;
+use quote::{format_ident, quote};
+use syn::{parse_macro_input, ItemEnum, Path, punctuated::Punctuated, Token};
 
 #[proc_macro_attribute]
 pub fn base_entries(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let mut tokens = item.clone().into_iter();
-    let mut enum_name = None;
+    let input = parse_macro_input!(item as ItemEnum);
+    let enum_ident = &input.ident;
+    let module_ident = format_ident!("__BASE_ENTRIES_{}", enum_ident);
+    let variants = input.variants.iter().map(|variant| &variant.ident);
 
-    // Find identifier after `enum`
-    while let Some(tt) = tokens.next() {
-        if let TokenTree::Ident(id) = tt
-            && id.to_string() == "enum" {
-                if let Some(TokenTree::Ident(name)) = tokens.next() {
-                    enum_name = Some(name);
-                }
-                break;
-            }
+    quote! {
+        #input
+
+        #[doc(hidden)]
+        pub mod #module_ident {
+            #(pub struct #variants;)*
+        }
     }
-
-    let enum_name = enum_name.expect("Could not find enum name");
-    let mod_ident = Ident::new(
-        &format!("__BASE_ENTRIES_{}", enum_name),
-        enum_name.span(),
-    );
-
-    // Collect variant names
-    let mut variants = Vec::new();
-    for tt in item.clone() {
-        if let TokenTree::Group(g) = tt
-            && g.delimiter() == proc_macro::Delimiter::Brace {
-                for inner in g.stream() {
-                    if let TokenTree::Ident(id) = inner {
-                        variants.push(id.to_string());
-                    }
-                }
-            }
-    }
-
-    // Generate module with structs
-    let mut out = item.to_string();
-    out.push_str("\npub mod ");
-    out.push_str(&mod_ident.to_string());
-    out.push_str(" {");
-
-    for v in variants {
-        out.push_str("\n    pub struct ");
-        out.push_str(&v);
-        out.push(';');
-    }
-
-    out.push_str("\n}");
-
-    out.parse().unwrap()
+    .into()
 }
 
 #[proc_macro_attribute]
 pub fn same_entries(attr: TokenStream, item: TokenStream) -> TokenStream {
-    // Parse attribute: E1, E2, E3
-    let attr_string = attr.to_string();
-    let referenced: Vec<String> =
-        attr_string.split(',').map(|s| s.trim().to_string()).collect();
+    let bases = parse_macro_input!(attr with Punctuated::<Path, Token![,]>::parse_terminated);
+    let input = parse_macro_input!(item as ItemEnum);
+    let enum_ident = &input.ident;
+    let check_module = format_ident!("__same_entries_check_{}", enum_ident);
+    let variants: Vec<_> = input.variants.iter().map(|variant| variant.ident.clone()).collect();
 
-    // Find THIS enum's name
-    let mut tokens = item.clone().into_iter();
-    let mut this_enum_name = None;
+    let checks = bases.iter().flat_map(|base| {
+        let base_ident = base
+            .get_ident()
+            .unwrap_or_else(|| panic!("expected enum identifier in #[same_entries(...)]"));
+        let base_module = format_ident!("__BASE_ENTRIES_{}", base_ident);
 
-    while let Some(tt) = tokens.next() {
-        if let TokenTree::Ident(id) = tt
-            && id.to_string() == "enum" {
-                if let Some(TokenTree::Ident(name)) = tokens.next() {
-                    this_enum_name = Some(name.to_string());
-                }
-                break;
-            }
-    }
-
-    let this_enum_name = this_enum_name.expect("Could not find enum name");
-
-    // Collect this enum's variants
-    let mut variants = Vec::new();
-    for tt in item.clone() {
-        if let TokenTree::Group(g) = tt
-            && g.delimiter() == proc_macro::Delimiter::Brace {
-                for inner in g.stream() {
-                    if let TokenTree::Ident(id) = inner {
-                        variants.push(id.to_string());
-                    }
+        variants.iter().map(move |variant| {
+            let check_fn = format_ident!("_check_{}_from_{}", variant, base_ident);
+            quote! {
+                fn #check_fn() {
+                    let _: super::#base_module::#variant;
                 }
             }
-    }
+        })
+    });
 
-    // Build unique module name
-    let check_mod_name = format!("__same_entries_check_{}", this_enum_name);
+    quote! {
+        #input
 
-    let mut check = String::new();
-    check.push_str("\nmod ");
-    check.push_str(&check_mod_name);
-    check.push_str(" {");
-
-    // For each referenced enum, check all variants
-    for base in referenced {
-        let base_mod = format!("__BASE_ENTRIES_{}", base);
-
-        check.push_str("\n    use super::");
-        check.push_str(&base_mod);
-        check.push(';');
-
-        for v in &variants {
-            check.push_str("\n    fn _check_");
-            check.push_str(v);
-            check.push_str("_from_");
-            check.push_str(&base);
-            check.push_str("() { let _ : ");
-            check.push_str(&base_mod);
-            check.push_str("::");
-            check.push_str(v);
-            check.push_str("; }");
+        #[doc(hidden)]
+        mod #check_module {
+            #(#checks)*
         }
     }
-
-    check.push_str("\n}");
-
-    let mut out = item.to_string();
-    out.push_str(&check);
-
-    out.parse().unwrap()
+    .into()
 }
