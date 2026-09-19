@@ -5,13 +5,11 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput};
 
-#[proc_macro_attribute]
-pub fn access(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub(crate) fn access_impl(_args: TokenStream, input: TokenStream) -> TokenStream {
     input
 }
 
-#[proc_macro_attribute]
-pub fn extract_accessors(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub(crate) fn extract_accessors_impl(_args: TokenStream, input: TokenStream) -> TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
     let struct_ident = &ast.ident;
     let mut methods = quote! {};
