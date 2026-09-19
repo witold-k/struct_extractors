@@ -4,24 +4,33 @@
 use struct_extractors::extract_accessors;
 
 #[extract_accessors]
-#[derive(Clone, Copy, Default)]
-pub struct MyStruct {
+pub struct MyStruct<T>
+where
+    T: Default,
+{
     #[access(get)]
-    field1: usize,
+    count: usize,
     #[access(get_ref)]
-    field2: usize
-}
-
-impl MyStruct {
-    fn new() -> Self {
-        Self { field1: 1, field2: 2 }
-    }
+    name: String,
+    #[access(get_mut)]
+    value: T,
+    #[access(get = "identifier")]
+    id: u64,
 }
 
 #[test]
-fn test_basic_arithmetic() {
-    let a = MyStruct::new();
-    assert!(a.get_field1() == 1);
-    let a = MyStruct::new();
-    assert!(*a.get_ref_field2() == 2);
+fn accessors_support_generics_and_each_access_mode() {
+    let mut value = MyStruct {
+        count: 3,
+        name: String::from("worker"),
+        value: 5_u32,
+        id: 42,
+    };
+
+    assert_eq!(value.get_count(), 3);
+    assert_eq!(value.get_ref_name(), "worker");
+    assert_eq!(value.identifier(), 42);
+
+    *value.get_mut_value() = 7;
+    assert_eq!(*value.get_mut_value(), 7);
 }
