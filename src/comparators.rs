@@ -5,8 +5,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput};
 
-#[proc_macro_attribute]
-pub fn extract_compare(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub(crate) fn extract_compare_impl(_args: TokenStream, input: TokenStream) -> TokenStream {
     input
 }
 
@@ -14,8 +13,7 @@ pub fn extract_compare(_args: TokenStream, input: TokenStream) -> TokenStream {
    STRUCT-LEVEL MACRO
    ------------------------------------------------------------------------- */
 
-#[proc_macro_attribute]
-pub fn extract_comparators(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub(crate) fn extract_comparators_impl(_args: TokenStream, input: TokenStream) -> TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
     let struct_ident = &ast.ident;
 
