@@ -21,8 +21,7 @@ impl Parse for ArgList {
     }
 }
 
-#[proc_macro_attribute]
-pub fn extract_number(args: TokenStream, input: TokenStream) -> TokenStream {
+pub(crate) fn extract_number_impl(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as ArgList);
 
     let field_ident = match args.items.len() {
