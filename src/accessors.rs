@@ -46,7 +46,10 @@ pub(crate) fn extract_accessors_impl(_args: TokenStream, input: TokenStream) -> 
                                 let method_name =
                                     syn::Ident::new(&format!("get_{}", field_ident), field_ident.span());
                                 methods.extend(quote! {
-                                    pub fn #method_name(&self) -> #ty {
+                                    pub fn #method_name(&self) -> #ty
+                                    where
+                                        #ty: Copy,
+                                    {
                                         self.#field_ident
                                     }
                                 });
@@ -85,7 +88,10 @@ pub(crate) fn extract_accessors_impl(_args: TokenStream, input: TokenStream) -> 
                         };
                         let method_name = syn::Ident::new(&litstr.value(), litstr.span());
                         methods.extend(quote! {
-                            pub fn #method_name(&self) -> #ty {
+                            pub fn #method_name(&self) -> #ty
+                            where
+                                #ty: Copy,
+                            {
                                 self.#field_ident
                             }
                         });
