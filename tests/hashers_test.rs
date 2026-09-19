@@ -1,65 +1,46 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 Witold Kaminski
 
-use struct_extractors::extract_hashers;
-use std::hash::{Hash, Hasher, DefaultHasher};
 use std::collections::HashMap;
+use struct_extractors::extract_hashers;
 
 #[derive(Debug)]
 #[extract_hashers]
-pub struct MyStruct {
+pub struct MyStruct<T>
+where
+    T: Eq + core::hash::Hash,
+{
     #[extract_hash]
-    pub val: usize,
-    pub other: usize,
+    pub value: T,
+    #[extract_hash]
+    pub group: T,
+    pub payload: usize,
 }
 
 #[test]
-fn test_hash_val() {
-    let a = MyStruct { val: 10, other: 1 };
-    let b = MyStruct { val: 10, other: 999 };
+fn hash_wrapper_uses_only_selected_field() {
+    let a = MyStruct { value: 10, group: 1, payload: 1 };
+    let b = MyStruct { value: 10, group: 2, payload: 999 };
+    let c = MyStruct { value: 20, group: 1, payload: 2 };
 
-    let mut h_a = DefaultHasher::new();
-    let hv_a = MyStructHashByval(&a);
+    assert_eq!(a.hash_by_value(), b.hash_by_value());
+    assert_ne!(a.hash_by_value(), c.hash_by_value());
 
-    let mut h_b = DefaultHasher::new();
-    let hv_b = MyStructHashByval(&b);
-
-    hv_a.hash(&mut h_a);
-    hv_b.hash(&mut h_b);
-
-    let hv_a = h_a.finish();
-    let hv_b = h_b.finish();
-    assert_eq!(hv_a, hv_b);
-
-    let mut h_c = DefaultHasher::new();
-    let c = MyStruct { val: 20, other: 1 };
-    let hv_c = MyStructHashByval(&c);
-    hv_c.hash(&mut h_c);
-    let hv_c = h_c.finish();
-
-    assert_ne!(hv_a, hv_c);
-
-    //h.finish()
+    assert_eq!(a.hash_by_group(), c.hash_by_group());
+    assert_ne!(a.hash_by_group(), b.hash_by_group());
 }
 
 #[test]
-fn test_hash_map() {
-    let a = MyStruct { val: 10, other: 1 };
-    let b = MyStruct { val: 10, other: 999 };
-    let c = MyStruct { val: 20, other: 1 };
+fn hash_wrappers_work_as_hash_map_keys() {
+    let a = MyStruct { value: 10, group: 1, payload: 1 };
+    let b = MyStruct { value: 10, group: 2, payload: 999 };
+    let c = MyStruct { value: 20, group: 1, payload: 2 };
 
-    // --- neuer Teil: HashMap-Test ---
-    let mut map: HashMap<MyStructHashByval<'_>, &str> = HashMap::new();
+    let mut map = HashMap::new();
+    map.insert(a.hash_by_value(), "A");
+    map.insert(b.hash_by_value(), "B");
+    map.insert(c.hash_by_value(), "C");
 
-    map.insert(MyStructHashByval(&a), "A");
-    map.insert(MyStructHashByval(&b), "B"); // overwrites "A"
-    map.insert(MyStructHashByval(&c), "C");
-
-    // a und b haben denselben Hash → gleicher Key → letzter gewinnt
-    assert_eq!(map.get(&MyStructHashByval(&a)), Some(&"B"));
-    assert_eq!(map.get(&MyStructHashByval(&b)), Some(&"B"));
-
-    // c hat anderen Hash → eigener Eintrag
-    assert_eq!(map.get(&MyStructHashByval(&c)), Some(&"C"));
+    assert_eq!(map.get(&a.hash_by_value()), Some(&"B"));
+    assert_eq!(map.get(&c.hash_by_value()), Some(&"C"));
 }
-
