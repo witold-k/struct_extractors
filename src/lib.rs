@@ -53,3 +53,8 @@ pub fn extract_hashers(args: TokenStream, input: TokenStream) -> TokenStream {
 pub fn extract_number(args: TokenStream, input: TokenStream) -> TokenStream {
     number::extract_number_impl(args, input)
 }
+
+#[proc_macro_attribute]
+pub fn enum_iter(args: TokenStream, input: TokenStream) -> TokenStream {
+    entries::enum_iter_impl(args, input)
+}
