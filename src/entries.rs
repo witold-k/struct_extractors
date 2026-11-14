@@ -5,6 +5,47 @@ use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, ItemEnum, Path, punctuated::Punctuated, Token};
 
+pub(crate) fn enum_iter_impl(attr: TokenStream, item: TokenStream) -> TokenStream {
+    if !attr.is_empty() {
+        return syn::Error::new(proc_macro2::Span::call_site(), "enum_iter does not accept arguments")
+            .to_compile_error()
+            .into();
+    }
+
+    let input = parse_macro_input!(item as ItemEnum);
+    let name = &input.ident;
+
+    for variant in &input.variants {
+        if !matches!(variant.fields, syn::Fields::Unit) {
+            return syn::Error::new_spanned(
+                variant,
+                "enum_iter supports only unit variants (variants without fields)",
+            )
+            .to_compile_error()
+            .into();
+        }
+    }
+
+    let variants: Vec<_> = input.variants.iter().map(|variant| &variant.ident).collect();
+    let count = variants.len();
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+    quote! {
+        #input
+
+        impl #impl_generics #name #ty_generics #where_clause {
+            /// All variants in declaration order.
+            pub const VARIANTS: [Self; #count] = [#(Self::#variants),*];
+
+            /// Iterate over the variants in declaration order.
+            pub fn iter() -> ::core::array::IntoIter<Self, #count> {
+                Self::VARIANTS.into_iter()
+            }
+        }
+    }
+    .into()
+}
+
 pub(crate) fn base_entries_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemEnum);
     let enum_ident = &input.ident;
