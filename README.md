@@ -10,7 +10,7 @@ The crate is intentionally split by concept so that each macro family has one re
 - `comparators`: generate named comparator functions for selected fields.
 - `hashers`: generate lightweight hash/equality wrapper types for selected fields.
 - `number`: derive arithmetic, assignment, comparison, aggregation, and `num_traits::Zero` / `One` behavior from one selected field. Binary and unary operations preserve the other fields from the left-hand value; `Sum`, `Product`, `Zero`, and `One` initialize other fields through `Default`.
-- `entries`: perform compile-time subset checks that every variant of an annotated enum exists in one or more declared base enums.
+- `enum_iter`: generate ordered variants and an owned iterator for unit-only enums.\n- `entries`: perform compile-time subset checks that every variant of an annotated enum exists in one or more declared base enums.
 
 ## Example
 
@@ -34,6 +34,35 @@ let config = Config {
 assert_eq!(config.get_retries(), 3);
 assert_eq!(config.get_ref_name(), "worker");
 ```
+
+## Enum iteration
+
+Apply `#[enum_iter]` to a fieldless enum to generate `Enum::VARIANTS` and
+`Enum::iter()`. Both preserve declaration order. The iterator owns each value,
+requires neither `Copy` nor `Clone`, and introduces no runtime dependencies.
+
+```rust
+use struct_extractors::enum_iter;
+
+#[enum_iter]
+#[derive(Debug, PartialEq, Eq)]
+enum State {
+    New,
+    Running,
+    Finished,
+}
+
+assert_eq!(State::VARIANTS.len(), 3);
+assert_eq!(
+    State::iter().collect::<Vec<_>>(),
+    vec![State::New, State::Running, State::Finished],
+);
+```
+
+Unit variants with explicit discriminants are supported, as are empty enums
+and generic enums. Tuple and struct-like variants produce a compile-time
+error: generating their values would require field data. Unlike the
+`strum` crate, this macro is intentionally limited to unit variants.
 
 ## Design goals
 
@@ -68,7 +97,7 @@ For this crate:
 ```text
 src/accessors.rs    -> tests/accessors_test.rs
 src/comparators.rs  -> tests/comparators_test.rs
-src/entries.rs      -> tests/entries_test.rs
+src/entries.rs      -> tests/entries_test.rs and tests/enum_iter_test.rs
 src/hashers.rs      -> tests/hashers_test.rs
 src/number.rs       -> tests/number_test.rs
 ```
